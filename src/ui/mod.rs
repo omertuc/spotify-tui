@@ -1634,6 +1634,21 @@ where
   };
 }
 
+pub fn fix_bidi<S>(s: S) -> String
+where
+  S: std::convert::AsRef<str>,
+{
+  let info = unicode_bidi::BidiInfo::new(s.as_ref(), None);
+
+  if let Some(paragraph) = info.paragraphs.iter().next() {
+    info
+      .reorder_line(&paragraph, paragraph.range.clone())
+      .to_string()
+  } else {
+    "".to_string()
+  }
+}
+
 fn draw_selectable_list<B, S>(
   f: &mut Frame<B>,
   app: &App,
@@ -1651,7 +1666,7 @@ fn draw_selectable_list<B, S>(
 
   let lst_items: Vec<ListItem> = items
     .iter()
-    .map(|i| ListItem::new(Span::raw(i.as_ref())))
+    .map(|i| ListItem::new(Span::raw(fix_bidi(i))))
     .collect();
 
   //TODO
@@ -1784,7 +1799,12 @@ fn draw_table<B>(
     .unwrap_or(0);
 
   let rows = items.iter().skip(offset).enumerate().map(|(i, item)| {
-    let mut formatted_row = item.format.clone();
+    let mut formatted_row: Vec<String> = item
+      .format
+      .clone()
+      .into_iter()
+      .map(|s| fix_bidi(s.to_string()))
+      .collect();
     let mut style = Style::default().fg(app.user_config.theme.text); // default styling
 
     // if table displays songs
